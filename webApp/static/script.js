@@ -268,14 +268,40 @@ function downloadVideo() {
         // Show success message
         showSuccess('Download completed! File is being saved to your Downloads folder.');
         
-        // Automatically trigger file download
-        const downloadLink = document.createElement('a');
-        downloadLink.href = `/api/youtube/get-file/${data.filename}`;
-        downloadLink.download = data.filename;
-        downloadLink.style.display = 'none';
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        document.body.removeChild(downloadLink);
+        // Automatically trigger file download using fetch + blob for better control
+        const filename = data.filename;
+        fetch(`/api/youtube/get-file/${encodeURIComponent(filename)}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to download file');
+                return response.blob();
+            })
+            .then(blob => {
+                // Create download link from blob
+                const url = window.URL.createObjectURL(blob);
+                const downloadLink = document.createElement('a');
+                downloadLink.href = url;
+                downloadLink.download = filename;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                window.URL.revokeObjectURL(url);
+                
+                // Now delete the file from server since download is complete
+                fetch(`/api/youtube/delete-file/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                })
+                .then(res => res.json())
+                .then(delData => {
+                    console.log('Server file cleanup:', delData.message || delData.error);
+                })
+                .catch(err => {
+                    console.warn('Could not delete server file:', err);
+                });
+            })
+            .catch(err => {
+                console.error('Download error:', err);
+                showError('Failed to save file to your computer');
+            });
         
         // Re-enable buttons
         document.getElementById('extract-btn').disabled = false;

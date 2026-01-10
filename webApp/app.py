@@ -4,6 +4,8 @@ import sys
 import subprocess
 from pathlib import Path
 import glob
+import threading 
+import time
 
 app = Flask(__name__)
 
@@ -132,7 +134,7 @@ def download_youtube_video():
 
 @app.route("/api/youtube/get-file/<path:filename>")
 def get_downloaded_file(filename):
-    """Serve the downloaded video file and delete it from server"""
+    """Serve the downloaded video file"""
     try:
         # Decode URL-encoded filename and construct path
         from urllib.parse import unquote
@@ -140,25 +142,38 @@ def get_downloaded_file(filename):
         file_path = Path(DOWNLOADS_FOLDER) / decoded_filename
         
         if file_path.exists():
-            response = send_file(
+            return send_file(
                 file_path,
                 as_attachment=True,
                 download_name=decoded_filename
             )
-            
-            # Delete the file from server after sending
-            def remove_file():
-                try:
-                    if file_path.exists():
-                        file_path.unlink()
-                        print(f"Deleted temporary file: {decoded_filename}")
-                except Exception as e:
-                    print(f"Warning: Could not delete file {decoded_filename}: {str(e)}")
-
-            response.call_on_close(remove_file)
-            return response
         else:
             return jsonify({'error': f'File not found: {decoded_filename}'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/youtube/delete-file/<path:filename>", methods=["DELETE"])
+def delete_downloaded_file(filename):
+    """Delete a file from the downloads folder after user has downloaded it"""
+    try:
+        from urllib.parse import unquote
+        decoded_filename = unquote(filename)
+        file_path = Path(DOWNLOADS_FOLDER) / decoded_filename
+        
+        if file_path.exists():
+            # Try to delete with retries in case file is still being released
+            for attempt in range(5):
+                try:
+                    file_path.unlink()
+                    print(f"Deleted file: {decoded_filename}")
+                    return jsonify({'message': f'File deleted: {decoded_filename}'})
+                except PermissionError:
+                    time.sleep(0.5)
+            
+            return jsonify({'error': 'File is still in use, please try again'}), 500
+        else:
+            return jsonify({'message': 'File already deleted or not found'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
