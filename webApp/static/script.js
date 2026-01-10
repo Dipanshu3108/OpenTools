@@ -222,6 +222,7 @@ function extractVideoInfo() {
     })
     .finally(() => {
         document.getElementById('extract-btn').disabled = false;
+        document.getElementById('download-btn').disabled = false;
     });
 }
 
@@ -265,31 +266,16 @@ function downloadVideo() {
         document.getElementById('loading').style.display = 'none';
         
         // Show success message
-        showSuccess('Download completed! Click below to save the file.');
+        showSuccess('Download completed! File is being saved to your Downloads folder.');
         
-        // Create download link
+        // Automatically trigger file download
         const downloadLink = document.createElement('a');
         downloadLink.href = `/api/youtube/get-file/${data.filename}`;
         downloadLink.download = data.filename;
-        downloadLink.textContent = `📥 Save ${data.filename}`;
-        downloadLink.style.display = 'block';
-        downloadLink.style.marginTop = '10px';
-        downloadLink.style.padding = '10px';
-        downloadLink.style.background = '#48bb78';
-        downloadLink.style.color = 'white';
-        downloadLink.style.textDecoration = 'none';
-        downloadLink.style.borderRadius = '6px';
-        downloadLink.style.textAlign = 'center';
-        downloadLink.style.fontWeight = '600';
-        
-        // Add hover effect
-        downloadLink.onmouseover = () => downloadLink.style.background = '#38a169';
-        downloadLink.onmouseout = () => downloadLink.style.background = '#48bb78';
-        
-        // Append to error message area (reusing it for success)
-        const errorDiv = document.getElementById('error-message');
-        errorDiv.appendChild(document.createElement('br'));
-        errorDiv.appendChild(downloadLink);
+        downloadLink.style.display = 'none';
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
         
         // Re-enable buttons
         document.getElementById('extract-btn').disabled = false;

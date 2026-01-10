@@ -102,10 +102,23 @@ def download_youtube_video():
         
         if files:
             latest_file = max(files, key=lambda p: p.stat().st_mtime)
+            
+            # Create a safe filename for serving
+            original_name = latest_file.name
+            safe_name = safe_title[:100] + latest_file.suffix  # Use safe_title we created earlier
+            safe_path = download_folder / safe_name
+            
+            # Rename file to safe name if different
+            if original_name != safe_name:
+                latest_file.rename(safe_path)
+            else:
+                safe_path = latest_file
+            
             return jsonify({
                 'message': 'Download completed successfully',
-                'filename': latest_file.name,
-                'filepath': str(latest_file)
+                'filename': safe_name,
+                'original_filename': original_name,
+                'filepath': str(safe_path)
             })
         else:
             return jsonify({'error': 'Download completed but file not found'}), 500
@@ -117,15 +130,19 @@ def download_youtube_video():
 def get_downloaded_file(filename):
     """Serve the downloaded video file"""
     try:
-        file_path = Path("downloads") / filename
+        # Decode URL-encoded filename and construct path
+        from urllib.parse import unquote
+        decoded_filename = unquote(filename)
+        file_path = Path("downloads") / decoded_filename
+        
         if file_path.exists():
             return send_file(
                 file_path,
                 as_attachment=True,
-                download_name=filename
+                download_name=decoded_filename
             )
         else:
-            return jsonify({'error': 'File not found'}), 404
+            return jsonify({'error': f'File not found: {decoded_filename}'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
