@@ -8,7 +8,11 @@ import glob
 app = Flask(__name__)
 
 # Add the project root to Python path so we can import download_yt.py
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(PROJECT_ROOT)
+
+# Use absolute path for downloads folder
+DOWNLOADS_FOLDER = os.path.join(PROJECT_ROOT, 'downloads')
 
 @app.route("/")
 def home():
@@ -89,11 +93,11 @@ def download_youtube_video():
         # Clean filename
         safe_title = "".join(c for c in video_title if c.isalnum() or c in (' ', '-', '_')).rstrip()
         
-        # Download the video
-        download_youtube_video(url, "downloads", start_time, end_time)
+        # Download the video using absolute path
+        download_youtube_video(url, DOWNLOADS_FOLDER, start_time, end_time)
         
         # Find the downloaded file (most recent file in downloads folder)
-        download_folder = Path("downloads")
+        download_folder = Path(DOWNLOADS_FOLDER)
         files = list(download_folder.glob("*.mp4"))
         if not files:
             files = list(download_folder.glob("*.mkv"))
@@ -128,19 +132,31 @@ def download_youtube_video():
 
 @app.route("/api/youtube/get-file/<path:filename>")
 def get_downloaded_file(filename):
-    """Serve the downloaded video file"""
+    """Serve the downloaded video file and delete it from server"""
     try:
         # Decode URL-encoded filename and construct path
         from urllib.parse import unquote
         decoded_filename = unquote(filename)
-        file_path = Path("downloads") / decoded_filename
+        file_path = Path(DOWNLOADS_FOLDER) / decoded_filename
         
         if file_path.exists():
-            return send_file(
+            response = send_file(
                 file_path,
                 as_attachment=True,
                 download_name=decoded_filename
             )
+            
+            # Delete the file from server after sending
+            def remove_file():
+                try:
+                    if file_path.exists():
+                        file_path.unlink()
+                        print(f"Deleted temporary file: {decoded_filename}")
+                except Exception as e:
+                    print(f"Warning: Could not delete file {decoded_filename}: {str(e)}")
+
+            response.call_on_close(remove_file)
+            return response
         else:
             return jsonify({'error': f'File not found: {decoded_filename}'}), 404
     except Exception as e:
