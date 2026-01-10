@@ -1,0 +1,287 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    margin: 0;
+    background-image: linear-gradient(to right top, #428b38, #1a9863, #00a48b, #00adaf, #25b5cb);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Header */
+header {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    padding: 0 40px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.header-content h1 {
+    color: white;
+    font-size: 28px;
+    font-weight: 600;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.header-content .subtitle {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    font-weight: 300;
+}
+
+.container {
+    display: flex;
+    height: calc(100vh - 80px);
+    padding: 20px;
+    gap: 20px;
+    max-width: 1800px;
+    margin: 0 auto;
+}
+
+/* Left layout */
+.left-panel {
+    width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    transition: all 0.5s ease;
+}
+
+/* Selected tool slot */
+.selected-slot {
+    width: 100%;
+    height: 340px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.selected-slot.has-tool {
+    border-style: solid;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.placeholder {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.placeholder svg {
+    margin-bottom: 10px;
+    opacity: 0.5;
+}
+
+/* Tools container */
+.tools-container {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+    padding: 20px;
+}
+
+/* Tool card */
+.tool {
+    width: 150px;
+    height: 150px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    padding: 15px;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.tool:hover {
+    transform: translateY(-8px) scale(1.05);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+    background: white;
+}
+
+/* When tool is in selected slot */
+.tool.selected {
+    width: 100%;
+    height: 100%;
+    transform: scale(1);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    border: 3px solid #25b5cb;
+    cursor: default;
+    justify-content: flex-start;
+    padding: 30px;
+}
+
+.tool.selected:hover {
+    transform: scale(1);
+}
+
+.tool-icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+    transition: all 0.5s ease;
+}
+
+.tool.selected .tool-icon {
+    font-size: 72px;
+    margin-bottom: 20px;
+}
+
+.tool h3 {
+    font-size: 16px;
+    color: #2d3748;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.5s ease;
+}
+
+.tool.selected h3 {
+    font-size: 28px;
+    margin-bottom: 15px;
+}
+
+/* Tool description (hidden by default, shown when selected) */
+.tool-description {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.5s ease;
+    color: #4a5568;
+    font-size: 16px;
+    line-height: 1.6;
+    text-align: center;
+}
+
+.tool.selected .tool-description {
+    opacity: 1;
+    max-height: 100px;
+    margin-top: 10px;
+}
+
+/* Close button */
+.tool-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 32px;
+    height: 32px;
+    background: rgba(239, 68, 68, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.tool.selected .tool-close {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.tool-close:hover {
+    background: rgba(220, 38, 38, 1);
+    transform: scale(1.1);
+}
+
+.tool-close::before,
+.tool-close::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 2px;
+    background: white;
+}
+
+.tool-close::before {
+    transform: rotate(45deg);
+}
+
+.tool-close::after {
+    transform: rotate(-45deg);
+}
+
+/* Preview panel */
+.preview {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transform: translateX(50px);
+    pointer-events: none;
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.preview.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+}
+
+.preview-header {
+    border-bottom: 2px solid #edf2f7;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+.preview h2 {
+    font-size: 32px;
+    color: #1a202c;
+    margin-bottom: 8px;
+}
+
+.preview .tool-type {
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.preview-content {
+    flex: 1;
+    color: #4a5568;
+    line-height: 1.7;
+}
+
+/* Custom Scrollbar */
+.tools-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tools-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.tools-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+}
