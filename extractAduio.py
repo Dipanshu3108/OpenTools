@@ -30,7 +30,8 @@ class VideoAudioExtractor:
         return output_path
 
 
-# Example Usage:
-extractor = VideoAudioExtractor("path to input video file")
-audio_file = extractor.extract_audio()
-print("Audio saved to:", audio_file)
+# Example Usage (uncomment to test directly):
+# if __name__ == "__main__":
+#     extractor = VideoAudioExtractor("path to input video file")
+#     audio_file = extractor.extract_audio()
+#     print("Audio saved to:", audio_file)

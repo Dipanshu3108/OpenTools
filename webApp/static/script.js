@@ -67,12 +67,39 @@ function selectTool(tool) {
         `;
     } else if (toolName === "Audio Extractor") {
         content = `
-            <div class="tool-settings">
-                <p>Extract high-quality audio from any video format (MP4, AVI, MOV).</p>
-                <ul style="margin: 15px 0; padding-left: 20px;">
-                    <li>Output Format: MP3, WAV, AAC</li>
-                    <li>Bitrate: 128kbps - 320kbps</li>
-                </ul>
+            <div class="audio-extractor">
+                <div class="input-section">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="video-file">Video File</label>
+                            <input type="file" id="video-file" accept="video/*" class="file-input">
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="extract-audio-btn" class="extract-btn" onclick="extractAudio()">Extract Audio</button>
+                        <button id="download-audio-btn" class="download-btn" onclick="downloadAudio()" style="display: none;">Download Audio</button>
+                    </div>
+                </div>
+                
+                <div id="audio-preview" class="audio-preview" style="display: none;">
+                    <h4 id="audio-title" style="margin: 0 0 10px 0; font-size: 14px; color: #1a202c;">Extracted Audio</h4>
+                    
+                    <div class="audio-player-container">
+                        <audio id="audio-player" controls style="width: 100%; margin-bottom: 10px;"></audio>
+                        <div class="audio-info">
+                            <span id="audio-filename" style="font-size: 12px; color: #666;"></span>
+                            <span id="audio-size" style="font-size: 12px; color: #666; margin-left: 10px;"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="audio-loading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Extracting audio...</p>
+                </div>
+                
+                <div id="audio-error-message" class="error-message" style="display: none;"></div>
             </div>
         `;
     } else if (toolName === "Frame Grabber") {
@@ -330,6 +357,135 @@ function showSuccess(message) {
     errorDiv.textContent = message;
     errorDiv.style.display = 'block';
     errorDiv.className = 'success-message';
+}
+
+// Audio Extractor Functions
+function extractAudio() {
+    const videoFile = document.getElementById('video-file').files[0];
+    
+    if (!videoFile) {
+        showAudioError('Please select a video file');
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('audio-loading').style.display = 'block';
+    document.getElementById('audio-error-message').style.display = 'none';
+    document.getElementById('audio-preview').style.display = 'none';
+    
+    // Disable buttons
+    document.getElementById('extract-audio-btn').disabled = true;
+    document.getElementById('download-audio-btn').style.display = 'none';
+    
+    // Create FormData for file upload
+    const formData = new FormData();
+    formData.append('video_file', videoFile);
+    
+    fetch('/api/audio/extract', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        // Hide loading
+        document.getElementById('audio-loading').style.display = 'none';
+        
+        // Show audio preview
+        document.getElementById('audio-preview').style.display = 'block';
+        
+        // Set audio source
+        const audioPlayer = document.getElementById('audio-player');
+        audioPlayer.src = `/api/audio/get-file/${encodeURIComponent(data.filename)}`;
+        
+        // Update info
+        document.getElementById('audio-filename').textContent = data.filename;
+        document.getElementById('audio-size').textContent = formatFileSize(data.size);
+        
+        // Show download button
+        document.getElementById('download-audio-btn').style.display = 'inline-block';
+        
+        // Store filename for download
+        document.getElementById('download-audio-btn').dataset.filename = data.filename;
+        
+    })
+    .catch(error => {
+        document.getElementById('audio-loading').style.display = 'none';
+        showAudioError(error.message);
+    })
+    .finally(() => {
+        document.getElementById('extract-audio-btn').disabled = false;
+    });
+}
+
+function downloadAudio() {
+    const filename = document.getElementById('download-audio-btn').dataset.filename;
+    
+    if (!filename) {
+        showAudioError('No audio file available for download');
+        return;
+    }
+    
+    // Trigger download
+    fetch(`/api/audio/get-file/${encodeURIComponent(filename)}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to download file');
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = filename;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            window.URL.revokeObjectURL(url);
+            
+            // Show success message
+            showAudioSuccess('Audio downloaded successfully!');
+            
+            // Delete file from server
+            fetch(`/api/audio/delete-file/${encodeURIComponent(filename)}`, {
+                method: 'DELETE'
+            })
+            .then(res => res.json())
+            .then(delData => {
+                console.log('Server file cleanup:', delData.message || delData.error);
+            })
+            .catch(err => {
+                console.warn('Could not delete server file:', err);
+            });
+        })
+        .catch(err => {
+            console.error('Download error:', err);
+            showAudioError('Failed to download audio file');
+        });
+}
+
+function showAudioError(message) {
+    const errorDiv = document.getElementById('audio-error-message');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    errorDiv.className = 'error-message';
+}
+
+function showAudioSuccess(message) {
+    const errorDiv = document.getElementById('audio-error-message');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    errorDiv.className = 'success-message';
+}
+
+function formatFileSize(bytes) {
+    if (!bytes) return '0 B';
+    
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
 }
 
 function formatDuration(seconds) {

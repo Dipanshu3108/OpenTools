@@ -533,3 +533,58 @@ header {
     border: 1px solid #9ae6b4;
     margin-top: 15px;
 }
+
+/* Audio Extractor Styles */
+.audio-extractor {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.file-input {
+    padding: 8px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+    width: 100%;
+    background: white;
+}
+
+.file-input:focus {
+    outline: none;
+    border-color: #25b5cb;
+    box-shadow: 0 0 0 2px rgba(37, 181, 203, 0.1);
+}
+
+.audio-preview {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 10px;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.audio-preview .preview-header h3 {
+    margin: 0 0 6px 0;
+    color: #1a202c;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.audio-player-container {
+    margin: 10px 0;
+}
+
+.audio-player-container audio {
+    width: 100%;
+    border-radius: 6px;
+}
+
+.audio-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #718096;
+}

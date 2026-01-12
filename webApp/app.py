@@ -177,5 +177,92 @@ def delete_downloaded_file(filename):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route("/api/audio/extract", methods=["POST"])
+def extract_audio():
+    """Extract audio from uploaded video file"""
+    try:
+        if 'video_file' not in request.files:
+            return jsonify({'error': 'No video file provided'}), 400
+        
+        video_file = request.files['video_file']
+        if video_file.filename == '':
+            return jsonify({'error': 'No video file selected'}), 400
+        
+        # Save uploaded file temporarily
+        temp_video_path = os.path.join(DOWNLOADS_FOLDER, 'temp_' + video_file.filename)
+        video_file.save(temp_video_path)
+        
+        # Import the audio extractor
+        from extractAduio import VideoAudioExtractor
+        
+        # Extract audio
+        extractor = VideoAudioExtractor(temp_video_path)
+        base_name = os.path.splitext(video_file.filename)[0]
+        audio_filename = base_name + ".mp3"
+        audio_path = os.path.join(DOWNLOADS_FOLDER, audio_filename)
+        
+        extracted_path = extractor.extract_audio(audio_path)
+        
+        # Clean up temp file
+        try:
+            os.remove(temp_video_path)
+        except:
+            pass
+        
+        # Get audio file info
+        audio_size = os.path.getsize(extracted_path)
+        
+        return jsonify({
+            'message': 'Audio extracted successfully',
+            'filename': audio_filename,
+            'filepath': extracted_path,
+            'size': audio_size
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/audio/get-file/<path:filename>")
+def get_audio_file(filename):
+    """Serve the extracted audio file"""
+    try:
+        from urllib.parse import unquote
+        decoded_filename = unquote(filename)
+        file_path = Path(DOWNLOADS_FOLDER) / decoded_filename
+        
+        if file_path.exists():
+            return send_file(
+                file_path,
+                as_attachment=True,
+                download_name=decoded_filename
+            )
+        else:
+            return jsonify({'error': f'File not found: {decoded_filename}'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/audio/delete-file/<path:filename>", methods=["DELETE"])
+def delete_audio_file(filename):
+    """Delete an extracted audio file after user has downloaded it"""
+    try:
+        from urllib.parse import unquote
+        decoded_filename = unquote(filename)
+        file_path = Path(DOWNLOADS_FOLDER) / decoded_filename
+        
+        if file_path.exists():
+            for attempt in range(5):
+                try:
+                    file_path.unlink()
+                    print(f"Deleted audio file: {decoded_filename}")
+                    return jsonify({'message': f'File deleted: {decoded_filename}'})
+                except PermissionError:
+                    time.sleep(0.5)
+            
+            return jsonify({'error': 'File is still in use, please try again'}), 500
+        else:
+            return jsonify({'message': 'File already deleted or not found'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == "__main__":
     app.run(debug=True)
