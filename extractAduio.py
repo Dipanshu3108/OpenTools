@@ -31,6 +31,6 @@ class VideoAudioExtractor:
 
 
 # Example Usage:
-extractor = VideoAudioExtractor("downloads\Stop tickling me Indian girl.mp4")
+extractor = VideoAudioExtractor("path to input video file")
 audio_file = extractor.extract_audio()
 print("Audio saved to:", audio_file)
