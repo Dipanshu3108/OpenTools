@@ -86,7 +86,7 @@ function selectTool(tool) {
                 </ul>
             </div>
         `;
-    } else if (toolName === "Youtube Video Downloader") {
+    } else if (toolName === "YouTube Video Downloader") {
         content = `
             <div class="youtube-downloader">
                 <div class="input-section">
