@@ -541,20 +541,80 @@ header {
     gap: 20px;
 }
 
-.file-input {
-    padding: 8px 12px;
-    border: 2px solid #e2e8f0;
-    border-radius: 6px;
-    font-size: 14px;
-    transition: border-color 0.3s ease;
+.file-input-wrapper {
+    position: relative;
     width: 100%;
-    background: white;
 }
 
-.file-input:focus {
+.file-input {
+    position: absolute;
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    z-index: -1;
+}
+
+.file-input-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    border: 2px dashed #cbd5e0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.file-input-label:hover {
+    border-color: #25b5cb;
+    background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 181, 203, 0.15);
+}
+
+.file-input-label:active {
+    transform: translateY(0);
+}
+
+.file-input:focus + .file-input-label {
     outline: none;
     border-color: #25b5cb;
-    box-shadow: 0 0 0 2px rgba(37, 181, 203, 0.1);
+    box-shadow: 0 0 0 3px rgba(37, 181, 203, 0.1);
+}
+
+.upload-icon {
+    flex-shrink: 0;
+    color: #25b5cb;
+    transition: transform 0.3s ease;
+}
+
+.file-input-label:hover .upload-icon {
+    transform: translateY(-3px);
+}
+
+.file-input-text {
+    color: #4a5568;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.file-input-filename {
+    color: #25b5cb;
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+
+.file-input-filename:empty {
+    display: none;
 }
 
 .audio-preview {

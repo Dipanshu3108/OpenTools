@@ -72,7 +72,18 @@ function selectTool(tool) {
                     <div class="input-row">
                         <div class="input-group">
                             <label for="video-file">Video File</label>
-                            <input type="file" id="video-file" accept="video/*" class="file-input">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="video-file" accept="video/*" class="file-input">
+                                <label for="video-file" class="file-input-label">
+                                    <svg class="upload-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <span class="file-input-text">Choose a video file</span>
+                                    <span class="file-input-filename"></span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                     
@@ -101,7 +112,7 @@ function selectTool(tool) {
                 
                 <div id="audio-error-message" class="error-message" style="display: none;"></div>
             </div>
-        `;
+        `
     } else if (toolName === "Frame Grabber") {
         content = `
             <div class="tool-settings">
