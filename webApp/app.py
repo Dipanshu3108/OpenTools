@@ -203,23 +203,27 @@ def extract_audio():
         
         extracted_path = extractor.extract_audio(audio_path)
         
-        # Clean up temp file
-        try:
-            os.remove(temp_video_path)
-        except:
-            pass
-        
         # Get audio file info
         audio_size = os.path.getsize(extracted_path)
+        
+        # Return the temp filename for later cleanup
+        temp_filename = os.path.basename(temp_video_path)
         
         return jsonify({
             'message': 'Audio extracted successfully',
             'filename': audio_filename,
+            'temp_filename': temp_filename,
             'filepath': extracted_path,
             'size': audio_size
         })
         
     except Exception as e:
+        # Clean up temp file on error
+        try:
+            if os.path.exists(temp_video_path):
+                os.remove(temp_video_path)
+        except:
+            pass
         return jsonify({'error': str(e)}), 500
 
 @app.route("/api/audio/get-file/<path:filename>")

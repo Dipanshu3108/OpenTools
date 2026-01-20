@@ -21,11 +21,17 @@ class VideoAudioExtractor:
         # Load video
         video = mp.VideoFileClip(self.video_path)
 
-        # Extract and write audio
-        if video.audio is None:
-            raise ValueError("This video does not contain an audio track.")
+        try:
+            # Extract and write audio
+            if video.audio is None:
+                raise ValueError("This video does not contain an audio track.")
 
-        video.audio.write_audiofile(output_path)
+            video.audio.write_audiofile(output_path)
+        finally:
+            # Crucial: Close both clip and its reader to release the file lock
+            video.close()
+            if hasattr(video, 'audio') and video.audio:
+                video.audio.close()
 
         return output_path
 

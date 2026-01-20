@@ -84,6 +84,12 @@ function selectTool(tool) {
                                     <span class="file-input-filename"></span>
                                 </label>
                             </div>
+                            <div id="file-selected-info" class="file-selected-info" style="display: none;">
+                                <div class="selected-file-details">
+                                    <span id="selected-filename" class="selected-filename"></span>
+                                    <button id="remove-file-btn" class="remove-file-btn" onclick="clearAudioFile()">✕</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -175,6 +181,14 @@ function selectTool(tool) {
     
     previewContent.innerHTML = content;
     preview.classList.add("active");
+    
+    // Initialize audio extractor functionality if needed
+    if (toolName === "Audio Extractor") {
+        setTimeout(() => {
+            initializeAudioExtractor();
+            updateAudioFileDisplay();
+        }, 0);
+    }
 }
 
 function closeTool() {
@@ -371,6 +385,37 @@ function showSuccess(message) {
 }
 
 // Audio Extractor Functions
+function initializeAudioExtractor() {
+    const videoFileInput = document.getElementById('video-file');
+    if (videoFileInput) {
+        videoFileInput.addEventListener('change', function(e) {
+            updateAudioFileDisplay();
+        });
+    }
+}
+
+function updateAudioFileDisplay() {
+    const videoFileInput = document.getElementById('video-file');
+    const fileSelectedInfo = document.getElementById('file-selected-info');
+    const selectedFilename = document.getElementById('selected-filename');
+    
+    if (videoFileInput && videoFileInput.files.length > 0) {
+        const file = videoFileInput.files[0];
+        selectedFilename.textContent = file.name;
+        fileSelectedInfo.style.display = 'block';
+    } else {
+        fileSelectedInfo.style.display = 'none';
+    }
+}
+
+function clearAudioFile() {
+    const videoFileInput = document.getElementById('video-file');
+    if (videoFileInput) {
+        videoFileInput.value = '';
+        updateAudioFileDisplay();
+    }
+}
+
 function extractAudio() {
     const videoFile = document.getElementById('video-file').files[0];
     
@@ -419,8 +464,9 @@ function extractAudio() {
         // Show download button
         document.getElementById('download-audio-btn').style.display = 'inline-block';
         
-        // Store filename for download
+        // Store both filenames for cleanup
         document.getElementById('download-audio-btn').dataset.filename = data.filename;
+        document.getElementById('download-audio-btn').dataset.tempFilename = data.temp_filename;
         
     })
     .catch(error => {
@@ -434,6 +480,7 @@ function extractAudio() {
 
 function downloadAudio() {
     const filename = document.getElementById('download-audio-btn').dataset.filename;
+    const tempFilename = document.getElementById('download-audio-btn').dataset.tempFilename;
     
     if (!filename) {
         showAudioError('No audio file available for download');
@@ -459,16 +506,30 @@ function downloadAudio() {
             // Show success message
             showAudioSuccess('Audio downloaded successfully!');
             
-            // Delete file from server
-            fetch(`/api/audio/delete-file/${encodeURIComponent(filename)}`, {
-                method: 'DELETE'
-            })
-            .then(res => res.json())
-            .then(delData => {
-                console.log('Server file cleanup:', delData.message || delData.error);
+            // Delete both the audio file and temp video file from server
+            const deletePromises = [
+                fetch(`/api/audio/delete-file/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                })
+            ];
+            
+            // Only delete temp file if it exists
+            if (tempFilename) {
+                deletePromises.push(
+                    fetch(`/api/audio/delete-file/${encodeURIComponent(tempFilename)}`, {
+                        method: 'DELETE'
+                    })
+                );
+            }
+            
+            Promise.all(deletePromises)
+            .then(responses => Promise.all(responses.map(res => res.json())))
+            .then(data => {
+                console.log('Server file cleanup completed');
+                data.forEach(d => console.log(d.message || d.error));
             })
             .catch(err => {
-                console.warn('Could not delete server file:', err);
+                console.warn('Could not delete all server files:', err);
             });
         })
         .catch(err => {
