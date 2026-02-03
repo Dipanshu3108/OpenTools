@@ -101,6 +101,9 @@ def download_youtube_video(url, output_folder="downloads", start_time=None, end_
             'outtmpl': str(output_path / '%(title)s.%(ext)s'),
             'quiet': False,
             'no_warnings': False,
+            'socket_timeout': 30,
+            'retries': 5,
+            'fragment_retries': 5,
         }
     else:
         # Use pre-merged format (doesn't require FFmpeg)
