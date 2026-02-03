@@ -730,9 +730,7 @@ header {
 
 .mode-select {
     background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7l5 5 5-5' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
+    position: relative;
     padding-right: 40px;
     appearance: none;
     -webkit-appearance: none;
@@ -740,10 +738,21 @@ header {
     font-weight: 500;
 }
 
+/* Custom arrow for dropdown */
+.mode-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7l5 5 5-5' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px 20px;
+}
+
 .mode-select:hover {
     border-color: #25b5cb;
     background: linear-gradient(135deg, #ffffff 0%, #e6fffa 100%);
-    transform: translateY(-1px);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7l5 5 5-5' stroke='%2325b5cb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px 20px;
     box-shadow: 0 2px 8px rgba(37, 181, 203, 0.15);
 }
 
@@ -751,6 +760,27 @@ header {
 .param-input:focus {
     border-color: #25b5cb;
     box-shadow: 0 0 0 3px rgba(37, 181, 203, 0.1);
+}
+
+/* Style dropdown options */
+.mode-select option {
+    padding: 12px 16px;
+    background: white;
+    color: #1a202c;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.mode-select option:hover {
+    background: #e6fffa;
+    color: #25b5cb;
+}
+
+.mode-select option:checked {
+    background: linear-gradient(135deg, #25b5cb 0%, #1a9863 100%);
+    color: white;
+    font-weight: 600;
 }
 
 .param-input {
