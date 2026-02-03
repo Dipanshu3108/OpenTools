@@ -268,5 +268,138 @@ def delete_audio_file(filename):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route("/api/frames/extract", methods=["POST"])
+def extract_frames():
+    """Extract frames from uploaded video file"""
+    try:
+        if 'video_file' not in request.files:
+            return jsonify({'error': 'No video file provided'}), 400
+        
+        video_file = request.files['video_file']
+        if video_file.filename == '':
+            return jsonify({'error': 'No video file selected'}), 400
+        
+        # Get extraction parameters
+        extraction_mode = request.form.get('extraction_mode', 'n_frames')
+        param_value = request.form.get('param_value', '10')
+        
+        try:
+            param_value = int(param_value)
+        except ValueError:
+            return jsonify({'error': 'Invalid parameter value'}), 400
+        
+        # Save uploaded file temporarily
+        temp_video_path = os.path.join(DOWNLOADS_FOLDER, 'temp_' + video_file.filename)
+        video_file.save(temp_video_path)
+        
+        # Create frames output folder
+        base_name = os.path.splitext(video_file.filename)[0]
+        frames_folder = os.path.join(DOWNLOADS_FOLDER, f'frames_{base_name}')
+        
+        # Import the frame extractor
+        from get_frames import FrameExtractor, get_total_frames
+        
+        # Extract frames based on mode
+        extractor = FrameExtractor(temp_video_path, frames_folder)
+        
+        if extraction_mode == 'n_frames':
+            frames_saved = extractor.extract_n_frames(param_value)
+        elif extraction_mode == 'every_nth':
+            frames_saved = extractor.extract_every_nth(param_value)
+        else:  # all_frames
+            frames_saved = extractor.extract_frames()
+        
+        # Get list of extracted frame files
+        frame_files = sorted([f for f in os.listdir(frames_folder) if f.endswith('.jpg')])
+        
+        # Clean up temp video file
+        try:
+            os.remove(temp_video_path)
+        except:
+            pass
+        
+        return jsonify({
+            'message': f'Extracted {frames_saved} frames successfully',
+            'frames_saved': frames_saved,
+            'frames_folder': os.path.basename(frames_folder),
+            'frame_files': frame_files[:100]  # Limit to first 100 for display
+        })
+        
+    except Exception as e:
+        # Clean up on error
+        try:
+            if 'temp_video_path' in locals() and os.path.exists(temp_video_path):
+                os.remove(temp_video_path)
+        except:
+            pass
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/frames/get-frame/<path:folder>/<path:filename>")
+def get_frame_file(folder, filename):
+    """Serve an extracted frame image"""
+    try:
+        from urllib.parse import unquote
+        decoded_folder = unquote(folder)
+        decoded_filename = unquote(filename)
+        file_path = Path(DOWNLOADS_FOLDER) / decoded_folder / decoded_filename
+        
+        if file_path.exists():
+            return send_file(file_path, mimetype='image/jpeg')
+        else:
+            return jsonify({'error': f'Frame not found: {decoded_filename}'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/frames/download-all/<path:folder>", methods=["GET"])
+def download_all_frames(folder):
+    """Create and serve a zip file of all extracted frames"""
+    try:
+        from urllib.parse import unquote
+        import zipfile
+        import io
+        
+        decoded_folder = unquote(folder)
+        frames_path = Path(DOWNLOADS_FOLDER) / decoded_folder
+        
+        if not frames_path.exists():
+            return jsonify({'error': 'Frames folder not found'}), 404
+        
+        # Create zip file in memory
+        memory_file = io.BytesIO()
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for frame_file in frames_path.glob('*.jpg'):
+                zf.write(frame_file, frame_file.name)
+        
+        memory_file.seek(0)
+        
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f'{decoded_folder}.zip'
+        )
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/frames/delete-folder/<path:folder>", methods=["DELETE"])
+def delete_frames_folder(folder):
+    """Delete extracted frames folder after user has downloaded them"""
+    try:
+        from urllib.parse import unquote
+        import shutil
+        
+        decoded_folder = unquote(folder)
+        folder_path = Path(DOWNLOADS_FOLDER) / decoded_folder
+        
+        if folder_path.exists() and folder_path.is_dir():
+            shutil.rmtree(folder_path)
+            print(f"Deleted frames folder: {decoded_folder}")
+            return jsonify({'message': f'Frames folder deleted: {decoded_folder}'})
+        else:
+            return jsonify({'message': 'Folder already deleted or not found'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == "__main__":
     app.run(debug=True)

@@ -705,3 +705,113 @@ header {
 .remove-file-btn:active {
     transform: scale(0.95);
 }
+
+/* Frame Grabber Styles */
+.frame-grabber {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: 100%;
+}
+
+.mode-select,
+.param-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+    color: #1a202c;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.mode-select:focus,
+.param-input:focus {
+    border-color: #25b5cb;
+    box-shadow: 0 0 0 3px rgba(37, 181, 203, 0.1);
+}
+
+.param-input {
+    max-width: 150px;
+}
+
+.frames-preview {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.frames-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.frames-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    padding: 5px;
+}
+
+.frame-item {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+    border: 2px solid #e2e8f0;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.frame-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: #25b5cb;
+}
+
+.frame-image {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    display: block;
+}
+
+.frame-label {
+    padding: 6px 8px;
+    font-size: 10px;
+    color: #4a5568;
+    background: #f7fafc;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* Scrollbar styling for frames preview */
+.frames-preview::-webkit-scrollbar {
+    width: 8px;
+}
+
+.frames-preview::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+.frames-preview::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 10px;
+}
+
+.frames-preview::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
+}

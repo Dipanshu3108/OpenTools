@@ -121,13 +121,66 @@ function selectTool(tool) {
         `
     } else if (toolName === "Frame Grabber") {
         content = `
-            <div class="tool-settings">
-                <p>Extract frames from your video at specific timestamps.</p>
-                <ul style="margin: 15px 0; padding-left: 20px;">
-                    <li>Support for all video formats</li>
-                    <li>High-quality image export</li>
-                    <li>Batch frame extraction</li>
-                </ul>
+            <div class="frame-grabber">
+                <div class="input-section">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="frame-video-file">Video File</label>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="frame-video-file" accept="video/*" class="file-input">
+                                <label for="frame-video-file" class="file-input-label">
+                                    <svg class="upload-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <span class="file-input-text">Choose a video file</span>
+                                </label>
+                            </div>
+                            <div id="frame-file-selected-info" class="file-selected-info" style="display: none;">
+                                <div class="selected-file-details">
+                                    <span id="frame-selected-filename" class="selected-filename"></span>
+                                    <button id="frame-remove-file-btn" class="remove-file-btn" onclick="clearFrameFile()">✕</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="extraction-mode">Extraction Mode</label>
+                            <select id="extraction-mode" class="mode-select" onchange="updateExtractionParam()">
+                                <option value="n_frames">Extract N Frames (Evenly Spaced)</option>
+                                <option value="every_nth">Extract Every Nth Frame</option>
+                                <option value="all_frames">Extract All Frames</option>
+                            </select>
+                        </div>
+                        <div class="input-group" id="param-group">
+                            <label for="param-value" id="param-label">Number of Frames</label>
+                            <input type="number" id="param-value" value="10" min="1" class="param-input">
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="extract-frames-btn" class="extract-btn" onclick="extractFrames()">Extract Frames</button>
+                        <button id="download-frames-btn" class="download-btn" onclick="downloadAllFrames()" style="display: none;">Download All Frames</button>
+                    </div>
+                </div>
+                
+                <div id="frames-preview" class="frames-preview" style="display: none;">
+                    <div class="frames-header">
+                        <h4 id="frames-title" style="margin: 0; font-size: 14px; color: #1a202c;">Extracted Frames</h4>
+                        <span id="frames-count" style="font-size: 12px; color: #666;"></span>
+                    </div>
+                    <div id="frames-grid" class="frames-grid"></div>
+                </div>
+                
+                <div id="frames-loading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Extracting frames...</p>
+                </div>
+                
+                <div id="frames-error-message" class="error-message" style="display: none;"></div>
             </div>
         `;
     } else if (toolName === "YouTube Video Downloader") {
@@ -187,6 +240,14 @@ function selectTool(tool) {
         setTimeout(() => {
             initializeAudioExtractor();
             updateAudioFileDisplay();
+        }, 0);
+    }
+    
+    // Initialize frame grabber functionality if needed
+    if (toolName === "Frame Grabber") {
+        setTimeout(() => {
+            initializeFrameGrabber();
+            updateFrameFileDisplay();
         }, 0);
     }
 }
@@ -584,4 +645,204 @@ function formatNumber(num) {
     } else {
         return num.toString();
     }
+}
+
+// Frame Grabber Functions
+function initializeFrameGrabber() {
+    const videoFileInput = document.getElementById('frame-video-file');
+    if (videoFileInput) {
+        videoFileInput.addEventListener('change', function(e) {
+            updateFrameFileDisplay();
+        });
+    }
+}
+
+function updateFrameFileDisplay() {
+    const videoFileInput = document.getElementById('frame-video-file');
+    const fileSelectedInfo = document.getElementById('frame-file-selected-info');
+    const selectedFilename = document.getElementById('frame-selected-filename');
+    
+    if (videoFileInput && videoFileInput.files.length > 0) {
+        const file = videoFileInput.files[0];
+        selectedFilename.textContent = file.name;
+        fileSelectedInfo.style.display = 'block';
+    } else {
+        fileSelectedInfo.style.display = 'none';
+    }
+}
+
+function clearFrameFile() {
+    const videoFileInput = document.getElementById('frame-video-file');
+    if (videoFileInput) {
+        videoFileInput.value = '';
+        updateFrameFileDisplay();
+    }
+    
+    // Clear preview
+    document.getElementById('frames-preview').style.display = 'none';
+    document.getElementById('download-frames-btn').style.display = 'none';
+}
+
+function updateExtractionParam() {
+    const mode = document.getElementById('extraction-mode').value;
+    const paramGroup = document.getElementById('param-group');
+    const paramLabel = document.getElementById('param-label');
+    const paramInput = document.getElementById('param-value');
+    
+    if (mode === 'all_frames') {
+        paramGroup.style.display = 'none';
+    } else {
+        paramGroup.style.display = 'block';
+        if (mode === 'n_frames') {
+            paramLabel.textContent = 'Number of Frames';
+            paramInput.value = '10';
+        } else if (mode === 'every_nth') {
+            paramLabel.textContent = 'Extract Every Nth Frame';
+            paramInput.value = '10';
+        }
+    }
+}
+
+function extractFrames() {
+    const videoFile = document.getElementById('frame-video-file').files[0];
+    const extractionMode = document.getElementById('extraction-mode').value;
+    const paramValue = document.getElementById('param-value').value;
+    
+    if (!videoFile) {
+        showFramesError('Please select a video file');
+        return;
+    }
+    
+    if (extractionMode !== 'all_frames' && (!paramValue || paramValue < 1)) {
+        showFramesError('Please enter a valid parameter value');
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('frames-loading').style.display = 'block';
+    document.getElementById('frames-error-message').style.display = 'none';
+    document.getElementById('frames-preview').style.display = 'none';
+    
+    // Disable buttons
+    document.getElementById('extract-frames-btn').disabled = true;
+    document.getElementById('download-frames-btn').style.display = 'none';
+    
+    // Create FormData
+    const formData = new FormData();
+    formData.append('video_file', videoFile);
+    formData.append('extraction_mode', extractionMode);
+    formData.append('param_value', paramValue);
+    
+    fetch('/api/frames/extract', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        // Hide loading
+        document.getElementById('frames-loading').style.display = 'none';
+        
+        // Show frames preview
+        document.getElementById('frames-preview').style.display = 'block';
+        document.getElementById('frames-count').textContent = `${data.frames_saved} frames extracted`;
+        
+        // Display frames in grid
+        const framesGrid = document.getElementById('frames-grid');
+        framesGrid.innerHTML = '';
+        
+        data.frame_files.forEach(filename => {
+            const frameItem = document.createElement('div');
+            frameItem.className = 'frame-item';
+            
+            const img = document.createElement('img');
+            img.src = `/api/frames/get-frame/${encodeURIComponent(data.frames_folder)}/${encodeURIComponent(filename)}`;
+            img.alt = filename;
+            img.className = 'frame-image';
+            img.loading = 'lazy';
+            
+            const frameLabel = document.createElement('div');
+            frameLabel.className = 'frame-label';
+            frameLabel.textContent = filename;
+            
+            frameItem.appendChild(img);
+            frameItem.appendChild(frameLabel);
+            framesGrid.appendChild(frameItem);
+        });
+        
+        // Show download button and store folder name
+        document.getElementById('download-frames-btn').style.display = 'inline-block';
+        document.getElementById('download-frames-btn').dataset.folder = data.frames_folder;
+        
+    })
+    .catch(error => {
+        document.getElementById('frames-loading').style.display = 'none';
+        showFramesError(error.message);
+    })
+    .finally(() => {
+        document.getElementById('extract-frames-btn').disabled = false;
+    });
+}
+
+function downloadAllFrames() {
+    const folder = document.getElementById('download-frames-btn').dataset.folder;
+    
+    if (!folder) {
+        showFramesError('No frames available for download');
+        return;
+    }
+    
+    // Trigger download
+    const downloadUrl = `/api/frames/download-all/${encodeURIComponent(folder)}`;
+    
+    fetch(downloadUrl)
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to download frames');
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = `${folder}.zip`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            window.URL.revokeObjectURL(url);
+            
+            showFramesSuccess('Frames downloaded successfully!');
+            
+            // Delete the frames folder from server
+            fetch(`/api/frames/delete-folder/${encodeURIComponent(folder)}`, {
+                method: 'DELETE'
+            })
+            .then(res => res.json())
+            .then(delData => {
+                console.log('Server folder cleanup:', delData.message || delData.error);
+            })
+            .catch(err => {
+                console.warn('Could not delete server folder:', err);
+            });
+        })
+        .catch(err => {
+            console.error('Download error:', err);
+            showFramesError('Failed to download frames');
+        });
+}
+
+function showFramesError(message) {
+    const errorDiv = document.getElementById('frames-error-message');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    errorDiv.className = 'error-message';
+}
+
+function showFramesSuccess(message) {
+    const errorDiv = document.getElementById('frames-error-message');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    errorDiv.className = 'success-message';
 }
