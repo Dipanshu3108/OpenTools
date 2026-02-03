@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tool Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <h1>Tool Dashboard</h1>
+            <p class="subtitle">Select a tool to get started</p>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- Left Panel -->
+        <div class="left-panel" id="leftPanel">
+
+            <!-- Selected Tool Slot -->
+            <div class="selected-slot" id="selectedSlot">
+                <div class="placeholder">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    <p>Select a tool below</p>
+                </div>
+            </div>
+
+            <!-- Tools Container (for floating) -->
+            <div class="tools-container" id="toolsContainer">
+                <div class="tool" data-name="Audio Extractor" data-description="Extract audio tracks from video files" onclick="selectTool(this)">
+                    <div class="tool-icon">🎵</div>
+                    <h3>Audio Extractor</h3>
+                </div>
+                <div class="tool" data-name="Frame Grabber" data-description="Capture frames from video at any timestamp" onclick="selectTool(this)">
+                    <div class="tool-icon">🖼️</div>
+                    <h3>Frame Grabber</h3>
+                </div>
+                <div class="tool" data-name="YouTube Video Downloader" data-description="Download YouTube videos by providing a URL for the full video, or specify a time range in hh:mm:ss format. Enjoy!" onclick="selectTool(this)">
+                    <div class="tool-icon">▶️</div>
+                    <h3>YouTube Video Downloader</h3>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Preview -->
+        <div class="preview" id="preview">
+            <div class="preview-header">
+                <h3 id="previewTitle">Select a tool</h3>
+            </div>
+            <div class="preview-content" id="previewContent">
+                <p>Select a tool from the grid to see its configuration options and preview its features.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
