@@ -724,7 +724,27 @@ header {
     background: white;
     color: #1a202c;
     outline: none;
-    transition: all 0.2s ease;
+    transition: all 0.5s ease;
+    cursor: pointer;
+}
+
+.mode-select {
+    background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7l5 5 5-5' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 40px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    font-weight: 500;
+}
+
+.mode-select:hover {
+    border-color: #25b5cb;
+    background: linear-gradient(135deg, #ffffff 0%, #e6fffa 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(37, 181, 203, 0.15);
 }
 
 .mode-select:focus,
@@ -768,8 +788,21 @@ header {
     overflow: hidden;
     background: white;
     border: 2px solid #e2e8f0;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     cursor: pointer;
+    opacity: 0;
+    animation: fadeInFrame 0.5s ease forwards;
+}
+
+@keyframes fadeInFrame {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .frame-item:hover {
@@ -814,4 +847,143 @@ header {
 
 .frames-preview::-webkit-scrollbar-thumb:hover {
     background: #a0aec0;
+}
+
+/* Frame Preview Modal */
+.frame-preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+    backdrop-filter: blur(5px);
+}
+
+.frame-preview-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.frame-preview-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    transform: scale(0.8);
+    transition: transform 0.5s ease;
+    animation: modalZoomIn 0.5s ease forwards;
+}
+
+.frame-preview-modal.active .frame-preview-content {
+    transform: scale(1);
+}
+
+@keyframes modalZoomIn {
+    from {
+        transform: scale(0.8) rotate(-2deg);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+.frame-preview-image {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    display: block;
+}
+
+.frame-preview-close {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #1a202c;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.frame-preview-close:hover {
+    background: #25b5cb;
+    color: white;
+    transform: rotate(90deg) scale(1.1);
+}
+
+.frame-preview-info {
+    position: absolute;
+    bottom: -50px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: white;
+    font-size: 14px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+/* Navigation arrows for modal */
+.frame-preview-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #1a202c;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.frame-preview-nav:hover {
+    background: #25b5cb;
+    color: white;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.frame-preview-nav.prev {
+    left: -70px;
+}
+
+.frame-preview-nav.next {
+    right: -70px;
+}
+
+.frame-preview-nav:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.frame-preview-nav:disabled:hover {
+    background: rgba(255, 255, 255, 0.9);
+    color: #1a202c;
+    transform: translateY(-50%);
 }

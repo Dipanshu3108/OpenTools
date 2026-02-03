@@ -754,19 +754,28 @@ function extractFrames() {
         const framesGrid = document.getElementById('frames-grid');
         framesGrid.innerHTML = '';
         
-        data.frame_files.forEach(filename => {
+        data.frame_files.forEach((filename, index) => {
             const frameItem = document.createElement('div');
             frameItem.className = 'frame-item';
+            frameItem.style.animationDelay = `${index * 0.03}s`;
             
             const img = document.createElement('img');
             img.src = `/api/frames/get-frame/${encodeURIComponent(data.frames_folder)}/${encodeURIComponent(filename)}`;
             img.alt = filename;
             img.className = 'frame-image';
             img.loading = 'lazy';
+            img.dataset.index = index;
+            img.dataset.folder = data.frames_folder;
+            img.dataset.filename = filename;
             
             const frameLabel = document.createElement('div');
             frameLabel.className = 'frame-label';
             frameLabel.textContent = filename;
+            
+            // Add click event for preview
+            frameItem.addEventListener('click', () => {
+                openFramePreview(data.frames_folder, filename, index, data.frame_files);
+            });
             
             frameItem.appendChild(img);
             frameItem.appendChild(frameLabel);
@@ -845,4 +854,102 @@ function showFramesSuccess(message) {
     errorDiv.textContent = message;
     errorDiv.style.display = 'block';
     errorDiv.className = 'success-message';
+}
+
+// Frame Preview Modal Functions
+let currentFrameIndex = 0;
+let currentFrameFiles = [];
+let currentFrameFolder = '';
+
+function openFramePreview(folder, filename, index, allFiles) {
+    currentFrameFolder = folder;
+    currentFrameIndex = index;
+    currentFrameFiles = allFiles;
+    
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('frame-preview-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'frame-preview-modal';
+        modal.className = 'frame-preview-modal';
+        modal.innerHTML = `
+            <div class="frame-preview-content">
+                <button class="frame-preview-close" onclick="closeFramePreview()">✕</button>
+                <button class="frame-preview-nav prev" onclick="navigateFrame(-1)">‹</button>
+                <img id="frame-preview-img" class="frame-preview-image" src="" alt="">
+                <button class="frame-preview-nav next" onclick="navigateFrame(1)">›</button>
+                <div class="frame-preview-info" id="frame-preview-info"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeFramePreview();
+            }
+        });
+        
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                closeFramePreview();
+            }
+        });
+        
+        // Navigate with arrow keys
+        document.addEventListener('keydown', (e) => {
+            if (!modal.classList.contains('active')) return;
+            if (e.key === 'ArrowLeft') {
+                navigateFrame(-1);
+            } else if (e.key === 'ArrowRight') {
+                navigateFrame(1);
+            }
+        });
+    }
+    
+    updateFramePreview();
+    
+    // Show modal with delay for animation
+    setTimeout(() => {
+        modal.classList.add('active');
+    }, 10);
+}
+
+function closeFramePreview() {
+    const modal = document.getElementById('frame-preview-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function navigateFrame(direction) {
+    currentFrameIndex += direction;
+    
+    // Loop around
+    if (currentFrameIndex < 0) {
+        currentFrameIndex = currentFrameFiles.length - 1;
+    } else if (currentFrameIndex >= currentFrameFiles.length) {
+        currentFrameIndex = 0;
+    }
+    
+    updateFramePreview();
+}
+
+function updateFramePreview() {
+    const img = document.getElementById('frame-preview-img');
+    const info = document.getElementById('frame-preview-info');
+    const prevBtn = document.querySelector('.frame-preview-nav.prev');
+    const nextBtn = document.querySelector('.frame-preview-nav.next');
+    
+    const filename = currentFrameFiles[currentFrameIndex];
+    const imgUrl = `/api/frames/get-frame/${encodeURIComponent(currentFrameFolder)}/${encodeURIComponent(filename)}`;
+    
+    img.src = imgUrl;
+    img.alt = filename;
+    info.textContent = `${filename} (${currentFrameIndex + 1} of ${currentFrameFiles.length})`;
+    
+    // Update navigation buttons
+    prevBtn.disabled = false;
+    nextBtn.disabled = false;
 }
