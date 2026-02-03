@@ -382,8 +382,9 @@ function downloadVideo() {
         showSuccess('Download completed! File is being saved to your Downloads folder.');
         
         // Automatically trigger file download using fetch + blob for better control
-        const filename = data.filename;
-        fetch(`/api/youtube/get-file/${encodeURIComponent(filename)}`)
+        const fileId = data.file_id;
+        const downloadName = data.download_name || data.file_id;
+        fetch(`/api/youtube/get-file/${encodeURIComponent(fileId)}`)
             .then(response => {
                 if (!response.ok) throw new Error('Failed to download file');
                 return response.blob();
@@ -393,14 +394,14 @@ function downloadVideo() {
                 const url = window.URL.createObjectURL(blob);
                 const downloadLink = document.createElement('a');
                 downloadLink.href = url;
-                downloadLink.download = filename;
+                downloadLink.download = downloadName;
                 document.body.appendChild(downloadLink);
                 downloadLink.click();
                 document.body.removeChild(downloadLink);
                 window.URL.revokeObjectURL(url);
                 
                 // Now delete the file from server since download is complete
-                fetch(`/api/youtube/delete-file/${encodeURIComponent(filename)}`, {
+                fetch(`/api/youtube/delete-file/${encodeURIComponent(fileId)}`, {
                     method: 'DELETE'
                 })
                 .then(res => res.json())
@@ -516,18 +517,18 @@ function extractAudio() {
         
         // Set audio source
         const audioPlayer = document.getElementById('audio-player');
-        audioPlayer.src = `/api/audio/get-file/${encodeURIComponent(data.filename)}`;
+        audioPlayer.src = `/api/audio/get-file/${encodeURIComponent(data.file_id)}`;
         
         // Update info
-        document.getElementById('audio-filename').textContent = data.filename;
+        document.getElementById('audio-filename').textContent = data.download_name || data.file_id;
         document.getElementById('audio-size').textContent = formatFileSize(data.size);
         
         // Show download button
         document.getElementById('download-audio-btn').style.display = 'inline-block';
         
         // Store both filenames for cleanup
-        document.getElementById('download-audio-btn').dataset.filename = data.filename;
-        document.getElementById('download-audio-btn').dataset.tempFilename = data.temp_filename;
+        document.getElementById('download-audio-btn').dataset.fileId = data.file_id;
+        document.getElementById('download-audio-btn').dataset.downloadName = data.download_name || data.file_id;
         
     })
     .catch(error => {
@@ -540,16 +541,16 @@ function extractAudio() {
 }
 
 function downloadAudio() {
-    const filename = document.getElementById('download-audio-btn').dataset.filename;
-    const tempFilename = document.getElementById('download-audio-btn').dataset.tempFilename;
+    const fileId = document.getElementById('download-audio-btn').dataset.fileId;
+    const downloadName = document.getElementById('download-audio-btn').dataset.downloadName;
     
-    if (!filename) {
+    if (!fileId) {
         showAudioError('No audio file available for download');
         return;
     }
     
     // Trigger download
-    fetch(`/api/audio/get-file/${encodeURIComponent(filename)}`)
+    fetch(`/api/audio/get-file/${encodeURIComponent(fileId)}`)
         .then(response => {
             if (!response.ok) throw new Error('Failed to download file');
             return response.blob();
@@ -558,7 +559,7 @@ function downloadAudio() {
             const url = window.URL.createObjectURL(blob);
             const downloadLink = document.createElement('a');
             downloadLink.href = url;
-            downloadLink.download = filename;
+            downloadLink.download = downloadName || fileId;
             document.body.appendChild(downloadLink);
             downloadLink.click();
             document.body.removeChild(downloadLink);
@@ -567,30 +568,16 @@ function downloadAudio() {
             // Show success message
             showAudioSuccess('Audio downloaded successfully!');
             
-            // Delete both the audio file and temp video file from server
-            const deletePromises = [
-                fetch(`/api/audio/delete-file/${encodeURIComponent(filename)}`, {
-                    method: 'DELETE'
-                })
-            ];
-            
-            // Only delete temp file if it exists
-            if (tempFilename) {
-                deletePromises.push(
-                    fetch(`/api/audio/delete-file/${encodeURIComponent(tempFilename)}`, {
-                        method: 'DELETE'
-                    })
-                );
-            }
-            
-            Promise.all(deletePromises)
-            .then(responses => Promise.all(responses.map(res => res.json())))
+            // Delete the audio file from server
+            fetch(`/api/audio/delete-file/${encodeURIComponent(fileId)}`, {
+                method: 'DELETE'
+            })
+            .then(res => res.json())
             .then(data => {
-                console.log('Server file cleanup completed');
-                data.forEach(d => console.log(d.message || d.error));
+                console.log('Server file cleanup:', data.message || data.error);
             })
             .catch(err => {
-                console.warn('Could not delete all server files:', err);
+                console.warn('Could not delete server file:', err);
             });
         })
         .catch(err => {

@@ -4,8 +4,11 @@ import sys
 import subprocess
 from pathlib import Path
 import glob
-import threading 
+import threading
 import time
+import tempfile
+import uuid
+import shutil
 
 app = Flask(__name__)
 
@@ -13,8 +16,44 @@ app = Flask(__name__)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_ROOT)
 
-# Use absolute path for downloads folder
-DOWNLOADS_FOLDER = os.path.join(PROJECT_ROOT, 'downloads')
+# Temporary storage root (auto-cleaned)
+TEMP_ROOT = os.path.join(tempfile.gettempdir(), 'videopy')
+os.makedirs(TEMP_ROOT, exist_ok=True)
+
+# Cleanup settings (seconds)
+FILE_TTL_SECONDS = 30 * 60  # 30 minutes
+CLEANUP_INTERVAL_SECONDS = 10 * 60  # 10 minutes
+
+
+def _resolve_temp_path(*parts) -> Path:
+    base = Path(TEMP_ROOT).resolve()
+    target = (base / Path(*parts)).resolve()
+    if target != base and base not in target.parents:
+        raise ValueError("Invalid path")
+    return target
+
+
+def _cleanup_temp_storage() -> None:
+    while True:
+        now = time.time()
+        try:
+            for path in Path(TEMP_ROOT).rglob('*'):
+                try:
+                    if path.is_file():
+                        if now - path.stat().st_mtime > FILE_TTL_SECONDS:
+                            path.unlink()
+                    elif path.is_dir():
+                        if now - path.stat().st_mtime > FILE_TTL_SECONDS and not any(path.iterdir()):
+                            path.rmdir()
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        time.sleep(CLEANUP_INTERVAL_SECONDS)
+
+
+_cleanup_thread = threading.Thread(target=_cleanup_temp_storage, daemon=True)
+_cleanup_thread.start()
 
 @app.route("/")
 def home():
@@ -95,11 +134,12 @@ def download_youtube_video():
         # Clean filename
         safe_title = "".join(c for c in video_title if c.isalnum() or c in (' ', '-', '_')).rstrip()
         
-        # Download the video using absolute path
-        download_youtube_video(url, DOWNLOADS_FOLDER, start_time, end_time)
+        # Download the video to a dedicated temporary folder
+        yt_temp_dir = tempfile.mkdtemp(prefix='yt_', dir=TEMP_ROOT)
+        download_youtube_video(url, yt_temp_dir, start_time, end_time)
         
         # Find the downloaded file (most recent file in downloads folder)
-        download_folder = Path(DOWNLOADS_FOLDER)
+        download_folder = Path(yt_temp_dir)
         files = list(download_folder.glob("*.mp4"))
         if not files:
             files = list(download_folder.glob("*.mkv"))
@@ -110,26 +150,34 @@ def download_youtube_video():
             latest_file = max(files, key=lambda p: p.stat().st_mtime)
             
             # Create a safe filename for serving
-            original_name = latest_file.name
-            safe_name = safe_title[:100] + latest_file.suffix  # Use safe_title we created earlier
-            safe_path = download_folder / safe_name
-            
-            # Rename file to safe name if different
-            if original_name != safe_name:
-                latest_file.rename(safe_path)
-            else:
-                safe_path = latest_file
-            
+            download_name = safe_title[:100] + latest_file.suffix
+            file_id = f"yt_{uuid.uuid4().hex}{latest_file.suffix}"
+            safe_path = Path(TEMP_ROOT) / file_id
+            latest_file.rename(safe_path)
+
+            try:
+                shutil.rmtree(yt_temp_dir, ignore_errors=True)
+            except Exception:
+                pass
+
             return jsonify({
                 'message': 'Download completed successfully',
-                'filename': safe_name,
-                'original_filename': original_name,
-                'filepath': str(safe_path)
+                'file_id': file_id,
+                'download_name': download_name
             })
         else:
+            try:
+                shutil.rmtree(yt_temp_dir, ignore_errors=True)
+            except Exception:
+                pass
             return jsonify({'error': 'Download completed but file not found'}), 500
         
     except Exception as e:
+        try:
+            if 'yt_temp_dir' in locals():
+                shutil.rmtree(yt_temp_dir, ignore_errors=True)
+        except Exception:
+            pass
         return jsonify({'error': str(e)}), 500
 
 @app.route("/api/youtube/get-file/<path:filename>")
@@ -139,7 +187,7 @@ def get_downloaded_file(filename):
         # Decode URL-encoded filename and construct path
         from urllib.parse import unquote
         decoded_filename = unquote(filename)
-        file_path = Path(DOWNLOADS_FOLDER) / decoded_filename
+        file_path = _resolve_temp_path(decoded_filename)
         
         if file_path.exists():
             return send_file(
@@ -159,7 +207,7 @@ def delete_downloaded_file(filename):
     try:
         from urllib.parse import unquote
         decoded_filename = unquote(filename)
-        file_path = Path(DOWNLOADS_FOLDER) / decoded_filename
+        file_path = _resolve_temp_path(decoded_filename)
         
         if file_path.exists():
             # Try to delete with retries in case file is still being released
@@ -189,7 +237,9 @@ def extract_audio():
             return jsonify({'error': 'No video file selected'}), 400
         
         # Save uploaded file temporarily
-        temp_video_path = os.path.join(DOWNLOADS_FOLDER, 'temp_' + video_file.filename)
+        suffix = Path(video_file.filename).suffix or '.mp4'
+        temp_fd, temp_video_path = tempfile.mkstemp(prefix='upload_', suffix=suffix, dir=TEMP_ROOT)
+        os.close(temp_fd)
         video_file.save(temp_video_path)
         
         # Import the audio extractor
@@ -198,31 +248,37 @@ def extract_audio():
         # Extract audio
         extractor = VideoAudioExtractor(temp_video_path)
         base_name = os.path.splitext(video_file.filename)[0]
-        audio_filename = base_name + ".mp3"
-        audio_path = os.path.join(DOWNLOADS_FOLDER, audio_filename)
-        
+        download_name = base_name + ".mp3"
+        file_id = f"audio_{uuid.uuid4().hex}.mp3"
+        audio_path = os.path.join(TEMP_ROOT, file_id)
+
         extracted_path = extractor.extract_audio(audio_path)
         
         # Get audio file info
         audio_size = os.path.getsize(extracted_path)
         
-        # Return the temp filename for later cleanup
-        temp_filename = os.path.basename(temp_video_path)
-        
+        # Clean up temp video file after extraction
+        try:
+            os.remove(temp_video_path)
+        except Exception:
+            pass
+
         return jsonify({
             'message': 'Audio extracted successfully',
-            'filename': audio_filename,
-            'temp_filename': temp_filename,
-            'filepath': extracted_path,
+            'file_id': file_id,
+            'download_name': download_name,
             'size': audio_size
+
         })
         
     except Exception as e:
         # Clean up temp file on error
         try:
-            if os.path.exists(temp_video_path):
+            if 'temp_video_path' in locals() and os.path.exists(temp_video_path):
                 os.remove(temp_video_path)
-        except:
+            if 'audio_path' in locals() and os.path.exists(audio_path):
+                os.remove(audio_path)
+        except Exception:
             pass
         return jsonify({'error': str(e)}), 500
 
@@ -232,7 +288,7 @@ def get_audio_file(filename):
     try:
         from urllib.parse import unquote
         decoded_filename = unquote(filename)
-        file_path = Path(DOWNLOADS_FOLDER) / decoded_filename
+        file_path = _resolve_temp_path(decoded_filename)
         
         if file_path.exists():
             return send_file(
@@ -251,7 +307,7 @@ def delete_audio_file(filename):
     try:
         from urllib.parse import unquote
         decoded_filename = unquote(filename)
-        file_path = Path(DOWNLOADS_FOLDER) / decoded_filename
+        file_path = _resolve_temp_path(decoded_filename)
         
         if file_path.exists():
             for attempt in range(5):
@@ -289,12 +345,15 @@ def extract_frames():
             return jsonify({'error': 'Invalid parameter value'}), 400
         
         # Save uploaded file temporarily
-        temp_video_path = os.path.join(DOWNLOADS_FOLDER, 'temp_' + video_file.filename)
+        suffix = Path(video_file.filename).suffix or '.mp4'
+        temp_fd, temp_video_path = tempfile.mkstemp(prefix='upload_', suffix=suffix, dir=TEMP_ROOT)
+        os.close(temp_fd)
         video_file.save(temp_video_path)
         
         # Create frames output folder
         base_name = os.path.splitext(video_file.filename)[0]
-        frames_folder = os.path.join(DOWNLOADS_FOLDER, f'frames_{base_name}')
+        safe_base = "".join(c for c in base_name if c.isalnum() or c in (' ', '-', '_')).strip() or "frames"
+        frames_folder = tempfile.mkdtemp(prefix=f'frames_{safe_base}_', dir=TEMP_ROOT)
         
         # Import the frame extractor
         from get_frames import FrameExtractor, get_total_frames
@@ -330,6 +389,8 @@ def extract_frames():
         try:
             if 'temp_video_path' in locals() and os.path.exists(temp_video_path):
                 os.remove(temp_video_path)
+            if 'frames_folder' in locals() and os.path.exists(frames_folder):
+                shutil.rmtree(frames_folder, ignore_errors=True)
         except:
             pass
         return jsonify({'error': str(e)}), 500
@@ -341,7 +402,7 @@ def get_frame_file(folder, filename):
         from urllib.parse import unquote
         decoded_folder = unquote(folder)
         decoded_filename = unquote(filename)
-        file_path = Path(DOWNLOADS_FOLDER) / decoded_folder / decoded_filename
+        file_path = _resolve_temp_path(decoded_folder, decoded_filename)
         
         if file_path.exists():
             return send_file(file_path, mimetype='image/jpeg')
@@ -359,7 +420,7 @@ def download_all_frames(folder):
         import io
         
         decoded_folder = unquote(folder)
-        frames_path = Path(DOWNLOADS_FOLDER) / decoded_folder
+        frames_path = _resolve_temp_path(decoded_folder)
         
         if not frames_path.exists():
             return jsonify({'error': 'Frames folder not found'}), 404
@@ -372,12 +433,20 @@ def download_all_frames(folder):
         
         memory_file.seek(0)
         
-        return send_file(
+        response = send_file(
             memory_file,
             mimetype='application/zip',
             as_attachment=True,
             download_name=f'{decoded_folder}.zip'
         )
+
+        # Cleanup frames folder after creating the zip
+        try:
+            shutil.rmtree(frames_path, ignore_errors=True)
+        except Exception:
+            pass
+
+        return response
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -387,10 +456,8 @@ def delete_frames_folder(folder):
     """Delete extracted frames folder after user has downloaded them"""
     try:
         from urllib.parse import unquote
-        import shutil
-        
         decoded_folder = unquote(folder)
-        folder_path = Path(DOWNLOADS_FOLDER) / decoded_folder
+        folder_path = _resolve_temp_path(decoded_folder)
         
         if folder_path.exists() and folder_path.is_dir():
             shutil.rmtree(folder_path)
