@@ -769,16 +769,10 @@ header {
     color: #1a202c;
     font-size: 14px;
     font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.mode-select option:hover {
-    background: #e6fffa;
-    color: #25b5cb;
 }
 
 .mode-select option:checked {
-    background: linear-gradient(135deg, #25b5cb 0%, #1a9863 100%);
+    background: #25b5cb;
     color: white;
     font-weight: 600;
 }
