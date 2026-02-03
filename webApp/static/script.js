@@ -56,16 +56,7 @@ function selectTool(tool) {
     
     // Example content based on tool
     let content = "";
-    if (toolName === "Video Editor") {
-        content = `
-            <div class="tool-settings">
-                <p>Upload your video file to start editing. You can trim, crop, and add filters.</p>
-                <div style="margin-top: 20px; padding: 20px; border: 2px dashed #cbd5e0; border-radius: 10px; text-align: center;">
-                    <p>Drop video here or click to upload</p>
-                </div>
-            </div>
-        `;
-    } else if (toolName === "Audio Extractor") {
+    if (toolName === "Audio Extractor") {
         content = `
             <div class="audio-extractor">
                 <div class="input-section">
